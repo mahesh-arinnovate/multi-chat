@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-AI Interview Practice Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            margin: 0;
+            background: #202124;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #202124;
+            color: white;
+            padding: 16px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status.connected {
+            color: #4ade80;
+        }
+
+        .status.disconnected {
+            color: #f87171;
+        }
+
+        .session-controls {
+            padding: 16px 20px;
+            background: #2d2e30;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .session-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .form-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .session-controls input,
+        .session-controls textarea {
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #3c4043;
+            color: white;
+        }
+
+        .session-controls input::placeholder,
+        .session-controls textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .session-controls textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .session-controls input[type="text"] {
+            width: 100%;
+        }
+
+        .session-controls button {
+            padding: 10px 20px;
+            background: #34d399;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-right: 10px;
+        }
+
+        .session-controls button:hover {
+            background: #10b981;
+        }
+
+        .session-controls button:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Google Meet-like Grid Layout */
+        .meet-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #202124;
+            overflow: hidden;
+        }
+
+        .participants-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 8px;
+            padding: 8px;
+            overflow-y: auto;
+            align-content: start;
+        }
+
+        .participant-card {
+            position: relative;
+            aspect-ratio: 16/9;
+            background: #3c4043;
+            border-radius: 4px;
+            overflow: visible;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: 44px;
+        }
+
+        .participant-card.speaking {
+            border-color: #34d399;
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(52, 211, 153, 0);
+            }
+        }
+
+        .participant-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 500;
+            color: white;
+            position: relative;
+            background-size: cover;
+            background-position: center;
+            flex-shrink: 0;
+        }
+
+        .mic-icon {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .mic-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: #34d399;
+        }
+
+        .mic-icon.muted {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .mic-icon.muted svg {
+            fill: #f87171;
+        }
+
+        .mic-icon.muted::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 22px;
+            background: #f87171;
+            transform: rotate(45deg);
+            border-radius: 1px;
+        }
+
+        .participant-info {
+            position: absolute;
+            bottom: -36px;
+            left: 0;
+            right: 0;
+            padding: 0;
+            color: white;
+            text-align: center;
+            background: transparent;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .participant-name {
+            font-size: 13px;
+            font-weight: 400;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+            width: 100%;
+            text-align: center;
+            padding: 0 4px;
+        }
+
+        .participant-role {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+            margin-top: 2px;
+            width: 100%;
+            text-align: center;
+            padding: 0 4px;
+        }
+
+        /* Caption Area */
+        .caption-area {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px 16px;
+            min-height: 60px;
+            max-height: 150px;
+            overflow-y: auto;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .caption-text {
+            color: white;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .caption-speaker {
+            font-weight: 500;
+            color: #34d399;
+            margin-right: 8px;
+        }
+
+        .ai-personality {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        /* Team Leader styling */
+        .ai-personality.team-leader {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .message.ai.team-leader .message-content {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%);
+            border-left: 4px solid #667eea;
+            color: #333;
+        }
+
+        /* Manager styling */
+        .ai-personality.manager {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .message.ai.manager .message-content {
+            background: linear-gradient(135deg, #fff0f5 0%, #ffeef3 100%);
+            border-left: 4px solid #f5576c;
+            color: #333;
+        }
+
+        /* Senior Developer styling */
+        .ai-personality.senior-developer {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .message.ai.senior-developer .message-content {
+            background: linear-gradient(135deg, #e6f7ff 0%, #e0f5ff 100%);
+            border-left: 4px solid #4facfe;
+            color: #333;
+        }
+
+        /* AI icons */
+        .ai-icon {
+            font-size: 14px;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            font-size: 14px;
+            background: #2d2d2d;
+            color: white;
+        }
+
+        .input-wrapper input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #34d399;
+        }
+
+        .input-wrapper button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .input-wrapper button:hover {
+            background: #5568d3;
+        }
+
+        .input-wrapper button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dots {
+            display: inline-block;
+        }
+
+        .typing-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots.team-leader span {
+            background: #667eea;
+        }
+
+        .typing-dots.manager span {
+            background: #f5576c;
+        }
+
+        .typing-dots.senior-developer span {
+            background: #4facfe;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.7;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #fcc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Multi-AI Interview Practice Platform</h1>
+            <div class="status disconnected" id="status">Disconnected</div>
+        </div>
+
+        <div class="session-controls">
+            <div class="session-form">
+                <div class="form-group">
+                    <label for="scenarioInput">Scenario *</label>
+                    <textarea id="scenarioInput" placeholder="Describe the practice scenario (e.g., Daily standup meeting, Client presentation, Team retrospective)"></textarea>
+        </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="userNameInput">Your Name *</label>
+                        <input type="text" id="userNameInput" placeholder="Enter your name">
+                </div>
+                    <div class="form-group">
+                        <label for="userRoleInput">Your Role *</label>
+                        <input type="text" id="userRoleInput" placeholder="Enter your role (e.g., Developer, Product Manager)">
+                    </div>
+                </div>
+            </div>
+            <div>
+                <button id="startBtn" onclick="startSession()">Start Practice Session</button>
+                <button id="stopBtn" onclick="stopSession()" disabled>End Session</button>
+            </div>
+        </div>
+
+        <div class="meet-container">
+            <div class="participants-grid" id="participantsGrid">
+                <!-- Participant cards will be dynamically added here -->
+            </div>
+            <div class="caption-area" id="captionArea">
+                <div class="caption-text" id="captionText">Welcome! Start a session to begin.</div>
+            </div>
+        </div>
+
+
+        <div class="input-container">
+            <div class="input-wrapper">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Type your answer or question..." 
+                    disabled
+                    onkeypress="handleKeyPress(event)"
+                >
+                <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let sessionId = null;
+        let activeAIs = new Map(); // Track which AIs are currently responding
+        let audioContext = null;
+        let audioBuffers = new Map(); // Track audio buffers per agent
+        let audioSources = new Map(); // Track audio sources per agent
+
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                updateStatus('connected', 'Connected');
+                console.log('WebSocket connected');
+            };
+
+            ws.onmessage = async (event) => {
+                // Handle binary audio chunks
+                if (event.data instanceof ArrayBuffer) {
+                    handleBinaryAudioChunk(event.data);
+                    return;
+                } else if (event.data instanceof Blob) {
+                    // Convert Blob to ArrayBuffer
+                    const arrayBuffer = await event.data.arrayBuffer();
+                    handleBinaryAudioChunk(arrayBuffer);
+                    return;
+                }
+                
+                // Handle JSON messages
+                try {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatus('disconnected', 'Connection Error');
+            };
+
+            ws.onclose = () => {
+                updateStatus('disconnected', 'Disconnected');
+                console.log('WebSocket disconnected');
+                // Attempt to reconnect after 3 seconds
+                setTimeout(connect, 3000);
+            };
+        }
+
+        function updateStatus(status, text) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = text;
+        }
+
+        function handleWebSocketMessage(data) {
+            console.log('Received:', data);
+
+            switch (data.type) {
+                case 'connected':
+                    console.log('Server:', data.message);
+                    break;
+
+                case 'session_created':
+                    sessionId = data.session.sessionId;
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    // Don't enable input yet - wait for user_turn event
+                    document.getElementById('messageInput').disabled = true;
+                    document.getElementById('sendBtn').disabled = true;
+                    
+                    // Clear previous participants
+                    participantCards.clear();
+                    document.getElementById('participantsGrid').innerHTML = '';
+                    colorIndex = 0;
+                    
+                    // Create user card
+                    const userName = document.getElementById('userNameInput').value.trim() || 'You';
+                    const userRole = document.getElementById('userRoleInput').value.trim() || 'Participant';
+                    createParticipantCard('user', userName, userRole, true);
+                    
+                    // Create agent cards
+                    if (data.session.agents && data.session.agents.length > 0) {
+                        data.session.agents.forEach(agent => {
+                            createParticipantCard(agent.id, agent.name, agent.designation, false);
+                        });
+                        addSystemMessage(`Session started with ${data.session.agents.length} agents. The conversation will begin shortly.`);
+                    } else {
+                        addSystemMessage('Session started! The conversation will begin shortly.');
+                    }
+                    break;
+
+                case 'user_turn':
+                    // Enable user input - it's the user's turn to speak
+                    enableUserInput();
+                    break;
+
+                case 'ai_thinking':
+                    // Disable user input - AI is thinking
+                    disableUserInput(data.message || 'AI is thinking...');
+                    break;
+
+                case 'ai_response_start':
+                    // Disable user input - AI is speaking
+                    disableUserInput('AI is speaking...');
+                    activeAIs.set(data.aiId, data.personality);
+                    createAIMessageElement(data.aiId, data.personality);
+                    break;
+
+                case 'tts_first_audio':
+                    // Audio has started - set the current speaking agent ID
+                    currentSpeakingAgentId = data.aiId;
+                    // Initialize audio queue for this agent
+                    if (!audioQueue.has(data.aiId)) {
+                        audioQueue.set(data.aiId, []);
+                        isPlaying.set(data.aiId, false);
+                        firstChunk.set(data.aiId, true);
+                    }
+                    // Ensure the participant is highlighted when audio starts
+                    highlightParticipant(data.aiId);
+                    console.log('TTS first audio received for agent:', data.aiId);
+                    break;
+
+                case 'ai_response_chunk':
+                    appendToAIMessage(data.aiId, data.chunk);
+                    break;
+
+                case 'ai_response_end':
+                    activeAIs.delete(data.aiId);
+                    hideTypingIndicator(data.aiId);
+                    finalizeAIMessage(data.aiId, data.fullMessage);
+                    break;
+
+                case 'ai_audio_end':
+                    handleAudioEnd(data.aiId);
+                    break;
+
+                case 'error':
+                    addErrorMessage(data.message);
+                    activeAIs.delete(data.aiId);
+                    hideTypingIndicator(data.aiId);
+                    break;
+
+                case 'pong':
+                    // Heartbeat response
+                    break;
+            }
+        }
+
+        function startSession() {
+            const scenario = document.getElementById('scenarioInput').value.trim();
+            const userName = document.getElementById('userNameInput').value.trim();
+            const userRole = document.getElementById('userRoleInput').value.trim();
+            
+            if (!scenario || !userName || !userRole) {
+                addErrorMessage('Please fill in all required fields: Scenario, Your Name, and Your Role');
+                return;
+            }
+            
+            ws.send(JSON.stringify({
+                type: 'start_session',
+                scenario: scenario,
+                userName: userName,
+                userRole: userRole,
+            }));
+        }
+
+        function stopSession() {
+            if (sessionId) {
+                // Clear session
+                sessionId = null;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('messageInput').disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+                addSystemMessage('Session ended. Thank you for practicing!');
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            // Block if input is disabled
+            if (input.disabled || sendBtn.disabled) {
+                console.warn('Cannot send message - input is disabled. Wait for your turn.');
+                return;
+            }
+            
+            const message = input.value.trim();
+            
+            if (!message || !sessionId) return;
+
+            // Disable input immediately to prevent multiple sends
+            disableUserInput('Sending your message...');
+
+            // Add user message to chat
+            addUserMessage(message);
+            
+            // Send to server
+            ws.send(JSON.stringify({
+                type: 'message',
+                content: message,
+                sessionId: sessionId,
+            }));
+
+            // Clear input
+            input.value = '';
+        }
+
+        function enableUserInput() {
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (input && sendBtn && sessionId) {
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.placeholder = 'Type your message...';
+                input.focus(); // Auto-focus when it's user's turn
+                console.log('User input enabled - it\'s your turn to speak');
+            }
+        }
+
+        function disableUserInput(reason) {
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (input && sendBtn) {
+                input.disabled = true;
+                sendBtn.disabled = true;
+                input.placeholder = reason || 'Wait for your turn...';
+                console.log('User input disabled:', reason || 'AI is speaking');
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Participant cards management
+        const participantCards = new Map(); // Map of participantId -> card element
+        const participantColors = [
+            '#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', 
+            '#fee140', '#30cfd0', '#a8edea', '#fed6e3', '#ffecd2'
+        ];
+        let colorIndex = 0;
+
+        function createParticipantCard(id, name, role, isUser = false) {
+            const grid = document.getElementById('participantsGrid');
+            const card = document.createElement('div');
+            card.className = 'participant-card';
+            card.id = `participant-${id}`;
+            card.dataset.participantId = id;
+            
+            const color = participantColors[colorIndex % participantColors.length];
+            colorIndex++;
+            
+            // Get initials for avatar (first letter of first name, first letter of last name)
+            const nameParts = name.trim().split(/\s+/);
+            let initials = '';
+            if (nameParts.length >= 2) {
+                initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+            } else if (nameParts.length === 1) {
+                initials = nameParts[0].substring(0, 2).toUpperCase();
+            } else {
+                initials = 'U';
+            }
+            
+            // Create gradient background
+            const darkerColor = adjustColor(color, -30);
+            
+            card.innerHTML = `
+                <div class="participant-avatar" style="background: linear-gradient(135deg, ${color} 0%, ${darkerColor} 100%);">
+                    ${initials}
+                </div>
+                <div class="participant-info">
+                    <div class="participant-name">${escapeHtml(name)}</div>
+                    <div class="participant-role">${escapeHtml(role)}</div>
+                </div>
+            `;
+            
+            grid.appendChild(card);
+            participantCards.set(id, card);
+            return card;
+        }
+
+        function adjustColor(color, amount) {
+            // Simple color adjustment - convert hex to RGB, adjust, convert back
+            const hex = color.replace('#', '');
+            const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+            const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+            const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        function highlightParticipant(id) {
+            console.log('Highlighting participant:', id, 'Available cards:', Array.from(participantCards.keys()));
+            // Remove speaking class and unmute mic from all cards
+            participantCards.forEach((card, cardId) => {
+                card.classList.remove('speaking');
+                const micIcon = card.querySelector('.mic-icon');
+                if (micIcon) {
+                    micIcon.classList.add('muted');
+                }
+            });
+            
+            // Add speaking class and unmute mic for current participant
+            const card = participantCards.get(id);
+            if (card) {
+                card.classList.add('speaking');
+                const micIcon = card.querySelector('.mic-icon');
+                if (micIcon) {
+                    micIcon.classList.remove('muted');
+                }
+                console.log('Successfully added speaking class to card:', id);
+            } else {
+                console.warn('Card not found for participant ID:', id);
+            }
+        }
+
+        function updateCaption(speakerName, text) {
+            const captionText = document.getElementById('captionText');
+            if (text) {
+                captionText.innerHTML = `<span class="caption-speaker">${escapeHtml(speakerName)}:</span>${escapeHtml(text)}`;
+            } else {
+                captionText.textContent = '';
+            }
+        }
+
+        function addUserMessage(message) {
+            // Highlight user card
+            highlightParticipant('user');
+            // Update caption
+            updateCaption('You', message);
+        }
+
+        function addSystemMessage(message) {
+            // Just update caption for system messages
+            updateCaption('System', message);
+        }
+
+        function addErrorMessage(message) {
+            updateCaption('Error', message);
+        }
+
+        const aiMessageElements = new Map();
+        let messageCounter = 0;
+
+        function getPersonalityClass(personality) {
+            const lower = personality.toLowerCase();
+            if (lower.includes('team leader') || lower.includes('scrum master') || lower.includes('lead')) return 'team-leader';
+            if (lower.includes('manager') || lower.includes('product manager')) return 'manager';
+            if (lower.includes('senior developer') || lower.includes('developer') || lower.includes('engineer')) return 'senior-developer';
+            return 'team-leader'; // default
+        }
+
+        function getPersonalityIcon(personality) {
+            const lower = personality.toLowerCase();
+            if (lower.includes('team leader') || lower.includes('scrum master') || lower.includes('lead')) return '👔';
+            if (lower.includes('manager') || lower.includes('product manager')) return '💼';
+            if (lower.includes('senior developer') || lower.includes('developer') || lower.includes('engineer')) return '💻';
+            return '👔'; // default
+        }
+
+        function createAIMessageElement(aiId, personality) {
+            // Highlight the agent's card when they start speaking
+            highlightParticipant(aiId);
+            
+            // Clear caption for new message
+            updateCaption('', '');
+            
+            // Store current speaker for caption updates
+            const nameMatch = personality.match(/^([^(]+)/);
+            const speakerName = nameMatch ? nameMatch[1].trim() : personality;
+            currentSpeakerName = speakerName;
+            
+                    return { 
+                messageId: `ai-${aiId}`, 
+                contentId: `ai-content-${aiId}`,
+                reused: false 
+            };
+        }
+
+        let currentSpeakerName = '';
+
+        function appendToAIMessage(aiId, chunk) {
+            // Update caption with streaming text
+            const captionText = document.getElementById('captionText');
+            const currentText = captionText.textContent.replace(/^[^:]+:\s*/, ''); // Remove speaker name if present
+            const newText = currentText + chunk;
+            updateCaption(currentSpeakerName, newText);
+        }
+
+        // Audio handling functions with buffering for live streaming
+        function initAudioContext() {
+            if (!audioContext) {
+                // Use optimal sample rate for better quality (match TTS sample rate)
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                        sampleRate: 48000 // Match TTS sample rate for no resampling
+                    });
+                } catch (e) {
+                    // Fallback if sample rate not supported
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            // Resume context if suspended (required by some browsers)
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            return audioContext;
+        }
+
+        // Create WAV header for PCM16 audio
+        function createWavHeader(dataSize, sampleRate = 48000, channels = 1, bitsPerSample = 16) {
+            const blockAlign = (channels * bitsPerSample) / 8;
+            const byteRate = sampleRate * blockAlign;
+            const fileSize = 36 + dataSize;
+            
+            const buffer = new ArrayBuffer(44);
+            const view = new DataView(buffer);
+            
+            // RIFF header
+            view.setUint32(0, 0x46464952, true); // "RIFF"
+            view.setUint32(4, fileSize, true);
+            view.setUint32(8, 0x45564157, true); // "WAVE"
+            
+            // fmt chunk
+            view.setUint32(12, 0x20746d66, true); // "fmt "
+            view.setUint32(16, 16, true); // fmt chunk size
+            view.setUint16(20, 1, true); // PCM format
+            view.setUint16(22, channels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            
+            // data chunk
+            view.setUint32(36, 0x61746164, true); // "data"
+            view.setUint32(40, dataSize, true);
+            
+            return new Uint8Array(buffer);
+        }
+
+        const audioQueue = new Map(); // Queue of audio chunks per agent
+        const isPlaying = new Map(); // Track if audio is playing per agent
+        const firstChunk = new Map(); // Track if first chunk (needs WAV header)
+        const currentSource = new Map(); // Current audio source per agent
+
+        let currentSpeakingAgentId = null;
+
+        // Track last audio chunk time for better buffering
+        const lastAudioChunkTime = new Map();
+        const MIN_BUFFER_CHUNKS = 8; // Buffer at least 8 chunks before starting (prevents gaps)
+        const FLUSH_IF_IDLE_MS = 300; // If no chunks for 300ms, flush what we have
+
+        function handleBinaryAudioChunk(arrayBuffer) {
+            // Binary audio chunk received - add to queue for the current speaking agent
+            const aiId = currentSpeakingAgentId;
+            if (!aiId) {
+                console.warn('Received audio chunk but no agent ID set. Waiting for tts_first_audio event...');
+                return;
+            }
+            
+            if (!audioQueue.has(aiId)) {
+                audioQueue.set(aiId, []);
+                isPlaying.set(aiId, false);
+                firstChunk.set(aiId, true);
+                lastAudioChunkTime.set(aiId, Date.now());
+            }
+            
+            const bytes = new Uint8Array(arrayBuffer);
+            audioQueue.get(aiId).push(bytes);
+            lastAudioChunkTime.set(aiId, Date.now());
+            
+            const queueLength = audioQueue.get(aiId).length;
+            console.log(`Audio chunk received for ${aiId}, queue length: ${queueLength}, chunk size: ${bytes.length} bytes`);
+            
+            // Improved buffering strategy:
+            // 1. Buffer more chunks before starting (MIN_BUFFER_CHUNKS) for smoother playback
+            // 2. If stream is active and we have enough chunks, start playing
+            // 3. If stream seems idle (no chunks for a while), flush what we have
+            if (!isPlaying.get(aiId)) {
+                const idleFor = Date.now() - (lastAudioChunkTime.get(aiId) || Date.now());
+                const hasEnoughChunks = queueLength >= MIN_BUFFER_CHUNKS;
+                const isIdle = idleFor > FLUSH_IF_IDLE_MS && queueLength > 0;
+                
+                if (hasEnoughChunks || isIdle) {
+                    console.log(`Starting audio playback for ${aiId} (chunks: ${queueLength}, idle: ${isIdle}ms)`);
+                    playAudioFromQueue(aiId);
+                }
+            }
+        }
+
+        async function playAudioFromQueue(aiId) {
+            if (isPlaying.get(aiId) || !audioQueue.has(aiId) || audioQueue.get(aiId).length === 0) {
+                return;
+            }
+
+            const ctx = initAudioContext();
+            const queue = audioQueue.get(aiId);
+            
+            // Improved chunk selection strategy for smoother playback:
+            // - If we have many chunks (>16), play larger segments (up to 20 chunks) to reduce gaps
+            // - If we have few chunks (<16), wait a bit more or play what we have if idle
+            // - This prevents tiny segments that cause audio gaps
+            const MIN_SEGMENT_CHUNKS = 12; // Minimum chunks per segment for smooth playback
+            const MAX_SEGMENT_CHUNKS = 20; // Maximum chunks per segment
+            const idleFor = Date.now() - (lastAudioChunkTime.get(aiId) || Date.now());
+            
+            let chunksToPlay;
+            if (queue.length >= MIN_SEGMENT_CHUNKS) {
+                // We have enough chunks - play a good-sized segment
+                chunksToPlay = Math.min(MAX_SEGMENT_CHUNKS, queue.length);
+            } else if (idleFor > FLUSH_IF_IDLE_MS) {
+                // Stream seems idle - flush what we have
+                chunksToPlay = queue.length;
+            } else {
+                // Not enough chunks and stream is active - wait for more
+                // Schedule a check after a short delay
+                setTimeout(() => {
+                    if (!isPlaying.get(aiId) && audioQueue.has(aiId) && audioQueue.get(aiId).length > 0) {
+                        playAudioFromQueue(aiId);
+                    }
+                }, 50);
+                return;
+            }
+            
+            const chunks = queue.splice(0, chunksToPlay);
+            console.log(`Playing ${chunks.length} chunks for ${aiId}, remaining in queue: ${queue.length}`);
+            
+            if (chunks.length === 0) return;
+
+            // Combine chunks
+            const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+            const combined = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const chunk of chunks) {
+                combined.set(chunk, offset);
+                offset += chunk.length;
+            }
+
+            // Skip WAV header if present in first chunk
+            let pcmData = combined;
+            if (firstChunk.get(aiId) && combined.length > 44) {
+                // Check if it's a WAV header (starts with "RIFF")
+                if (combined[0] === 0x52 && combined[1] === 0x49 && combined[2] === 0x46 && combined[3] === 0x46) {
+                    console.log('WAV header detected, skipping 44 bytes');
+                    pcmData = combined.slice(44); // Skip WAV header
+            } else {
+                    console.log('No WAV header found, using raw PCM data');
+                }
+                firstChunk.set(aiId, false);
+            }
+
+            // Convert PCM16 to AudioBuffer (48kHz, mono, 16-bit)
+            const sampleRate = 48000;
+            const numChannels = 1;
+            const numSamples = pcmData.length / 2; // 16-bit = 2 bytes per sample
+            
+            if (numSamples === 0) {
+                console.warn(`No samples to play for ${aiId}`);
+                return;
+            }
+            
+            const audioBuffer = ctx.createBuffer(numChannels, numSamples, sampleRate);
+            const channelData = audioBuffer.getChannelData(0);
+
+            // Convert 16-bit PCM to float32 (-1.0 to 1.0)
+            // Handle little-endian 16-bit PCM
+            // Use DataView for better performance with large buffers
+            const dataView = new DataView(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength);
+            for (let i = 0; i < numSamples; i++) {
+                // Use DataView.getInt16 for better performance and correct endianness
+                const sample = dataView.getInt16(i * 2, true); // true = little-endian
+                channelData[i] = sample / 32768.0;
+            }
+
+            // Play audio
+            isPlaying.set(aiId, true);
+            const source = ctx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(ctx.destination);
+            currentSource.set(aiId, source);
+            
+            source.onended = () => {
+                console.log(`Audio segment ended for ${aiId}, queue length: ${audioQueue.has(aiId) ? audioQueue.get(aiId).length : 0}`);
+                isPlaying.set(aiId, false);
+                currentSource.delete(aiId);
+                
+                // Continuous playback - check for next segment
+                // Use requestAnimationFrame for smoother scheduling
+                requestAnimationFrame(() => {
+                    if (audioQueue.has(aiId) && audioQueue.get(aiId).length > 0) {
+                        // We have more chunks - play them immediately for seamless playback
+                        const queueLength = audioQueue.get(aiId).length;
+                        const idleFor = Date.now() - (lastAudioChunkTime.get(aiId) || Date.now());
+                        
+                        // If we have enough chunks or stream is idle, play immediately
+                        if (queueLength >= MIN_SEGMENT_CHUNKS || idleFor > FLUSH_IF_IDLE_MS) {
+                            console.log(`Playing next segment for ${aiId}, queue length: ${queueLength}`);
+                            playAudioFromQueue(aiId);
+                        } else {
+                            // Wait a bit for more chunks to arrive
+                            setTimeout(() => {
+                                if (!isPlaying.get(aiId) && audioQueue.has(aiId) && audioQueue.get(aiId).length > 0) {
+                                    playAudioFromQueue(aiId);
+                                }
+                            }, 30);
+                        }
+                    } else {
+                        // Queue is empty - wait a bit to see if more chunks arrive
+                        // (they might still be in transit when handleAudioEnd was called)
+                        setTimeout(() => {
+                            if (audioQueue.has(aiId) && audioQueue.get(aiId).length > 0) {
+                                // More chunks arrived, play them
+                                console.log(`More chunks arrived for ${aiId}, playing them`);
+                                playAudioFromQueue(aiId);
+                            } else {
+                                // Really done - verify audio is not playing before notifying
+                                if (!isPlaying.get(aiId)) {
+                                    console.log(`All audio played and stopped for ${aiId}, removing highlight and notifying backend`);
+                                    // Remove speaking highlight and mute mic when audio is truly complete
+                                    const card = participantCards.get(aiId);
+                                    if (card) {
+                                        card.classList.remove('speaking');
+                                        const micIcon = card.querySelector('.mic-icon');
+                                        if (micIcon) {
+                                            micIcon.classList.add('muted');
+                                        }
+                                    }
+                                    checkAndNotifyPlaybackComplete(aiId);
+                                } else {
+                                    console.log(`Audio still playing for ${aiId}, waiting...`);
+                                    // Wait a bit more and check again
+                                    setTimeout(() => {
+                                        if (!isPlaying.get(aiId)) {
+                                            const card = participantCards.get(aiId);
+                                            if (card) {
+                                                card.classList.remove('speaking');
+                                                const micIcon = card.querySelector('.mic-icon');
+                                                if (micIcon) {
+                                                    micIcon.classList.add('muted');
+                                                }
+                                            }
+                                            checkAndNotifyPlaybackComplete(aiId);
+                                        }
+                                    }, 200);
+                                }
+                            }
+                        }, 150); // Reduced wait time since we're using better buffering
+                    }
+                });
+            };
+
+            console.log(`Starting audio playback for ${aiId}, samples: ${numSamples}`);
+            source.start(0);
+        }
+
+        async function handleAudioEnd(aiId) {
+            console.log(`Audio end signal received for ${aiId}`);
+            // Mark that streaming has ended, but keep playing remaining chunks
+            // Wait a bit longer for any final chunks that might still be in transit
+            setTimeout(() => {
+                // Keep playing until queue is empty
+                const playRemaining = () => {
+                    if (audioQueue.has(aiId) && audioQueue.get(aiId).length > 0) {
+                        if (!isPlaying.get(aiId)) {
+                            console.log(`Playing remaining chunks for ${aiId}, queue length: ${audioQueue.get(aiId).length}`);
+                            playAudioFromQueue(aiId);
+                        }
+                        // Check again after a short delay
+                        setTimeout(playRemaining, 100);
+            } else {
+                        // Queue is empty, wait a bit more to ensure playback finished
+                        setTimeout(() => {
+                            if (!isPlaying.get(aiId)) {
+                                console.log(`All audio finished for ${aiId}, removing highlight and notifying backend`);
+                                // Remove speaking highlight and mute mic when audio is truly complete
+                                const card = participantCards.get(aiId);
+                                if (card) {
+                                    card.classList.remove('speaking');
+                                    const micIcon = card.querySelector('.mic-icon');
+                                    if (micIcon) {
+                                        micIcon.classList.add('muted');
+                                    }
+                                }
+                                checkAndNotifyPlaybackComplete(aiId);
+                            } else {
+                                // Still playing, check again
+                                setTimeout(playRemaining, 100);
+                            }
+                        }, 200);
+                    }
+                };
+                playRemaining();
+            }, 200);
+        }
+
+        function checkAndNotifyPlaybackComplete(aiId) {
+            // Double-check: audio must not be playing AND queue must be empty
+            const stillPlaying = isPlaying.get(aiId) === true;
+            const hasChunks = audioQueue.has(aiId) && audioQueue.get(aiId).length > 0;
+            
+            if (stillPlaying || hasChunks) {
+                console.log(`Cannot notify playback complete for ${aiId}: stillPlaying=${stillPlaying}, hasChunks=${hasChunks}`);
+                // Wait a bit and check again
+                setTimeout(() => {
+                    checkAndNotifyPlaybackComplete(aiId);
+                }, 200);
+                return;
+            }
+            
+            // All audio playback is complete - notify backend
+            console.log(`Notifying backend: audio playback complete for ${aiId}`);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'audio_playback_complete',
+                    aiId: aiId,
+                    sessionId: sessionId,
+                }));
+            }
+        }
+
+        function finalizeAIMessage(aiId, fullMessage) {
+            // Finalize caption with full message
+            updateCaption(currentSpeakerName, fullMessage);
+            // Don't remove highlight here - keep it active until audio playback completes
+            // The highlight will be removed in handleAudioEnd when playback is truly complete
+        }
+
+        function showTypingIndicator(aiId, personality) {
+            // Highlight the participant card when typing
+            highlightParticipant(aiId);
+            // Update caption to show typing
+            const nameMatch = personality.match(/^([^(]+)/);
+            const speakerName = nameMatch ? nameMatch[1].trim() : personality;
+            updateCaption(speakerName, '...');
+        }
+
+        function hideTypingIndicator(aiId) {
+            // Typing indicator is handled by caption updates
+            // No need for separate indicator in Google Meet UI
+        }
+
+        function scrollToBottom() {
+            // Scroll caption area to bottom
+            const captionArea = document.getElementById('captionArea');
+            if (captionArea) {
+                captionArea.scrollTop = captionArea.scrollHeight;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize connection on page load
+        connect();
+    </script>
+</body>
+</html>
